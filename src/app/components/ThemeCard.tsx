@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import { supabase } from "@/utils/supabaseClient";
+import { useMount } from "ahooks";
+import React, { useEffect, useState } from "react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { HiPencil, HiX, HiCheck } from "react-icons/hi";
@@ -32,7 +34,6 @@ interface CardProps {
   moveCard?: (fromIndex: number, toIndex: number) => void;
   isEditing?: boolean;
   onCardClick?: () => void;
-  showIndex?: boolean; // 是否显示序号
 }
 
 const Card: React.FC<CardProps> = ({
@@ -44,7 +45,7 @@ const Card: React.FC<CardProps> = ({
 }) => {
   const [{ isDragging }, drag] = useDrag({
     type: ItemTypes.CARD,
-    item: { index },
+    item: { index, id: card.id },
     collect: (monitor) => ({
       isDragging: monitor.isDragging(),
     }),
@@ -53,8 +54,9 @@ const Card: React.FC<CardProps> = ({
 
   const [, drop] = useDrop({
     accept: ItemTypes.CARD,
-    hover: (item: { index: number }) => {
-      if (moveCard && item.index !== index && card.status === 1) {
+    hover: (item: { index: number; id: string }) => {
+      // 只有在编辑模式下且当前卡片状态为待开始时才允许排序
+      if (isEditing && moveCard && item.index !== index && card.status === 1) {
         moveCard(item.index, index);
         item.index = index;
       }
@@ -67,7 +69,10 @@ const Card: React.FC<CardProps> = ({
     if (isEditing && card.status !== 1) {
       return "opacity-60 cursor-not-allowed";
     }
-    return isDragging ? "opacity-50" : "opacity-100";
+    // 只在编辑模式下且状态为待开始时才显示移动光标
+    const cursorClass =
+      isEditing && card.status === 1 ? "cursor-move" : "cursor-pointer";
+    return `${cursorClass} ${isDragging ? "opacity-50" : "opacity-100"}`;
   };
 
   return (
@@ -77,17 +82,17 @@ const Card: React.FC<CardProps> = ({
           drag(drop(node));
         }
       }}
-      className={`bg-white rounded-xl shadow-md overflow-hidden cursor-move transition-all duration-200 ${getStatusClass()}`}
+      className={`bg-white rounded-xl shadow-md overflow-hidden transition-all duration-200 ${getStatusClass()}`}
       onClick={onCardClick}
     >
       <div className="p-5 relative">
         <div className="absolute -top-[36px] md:-top-[24px] right-4 text-gray-300 text-[68px] md:text-[54px] font-semibold italic ">
-          {card.order + 1}
+          {card.order}
         </div>
 
         <h3 className="text-xl font-bold text-gray-800 mb-2">{card.title}</h3>
         <p className="text-gray-600 text-sm mb-4">
-          {card.objectives[0]} {/* 仅显示第一个目标作为预览 */}
+          {card?.objectives?.[0]} {/* 仅显示第一个目标作为预览 */}
         </p>
         <div className="flex justify-between items-center">
           <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-0.5 rounded">
@@ -129,7 +134,6 @@ const CardListWithTitle: React.FC<CardListWithTitleProps> = ({
             moveCard={moveCard}
             isEditing={isEditing}
             onCardClick={() => onCardClick?.(card)}
-            showIndex={title === "待开始"}
           />
         ))}
       </div>
@@ -138,84 +142,109 @@ const CardListWithTitle: React.FC<CardListWithTitleProps> = ({
 };
 
 // 总览组件
-const Overview: React.FC = () => {
-  const initialCards: ThemeCard[] = [
-    {
-      id: "1",
-      title: "纯黑白人物插图",
-      objectives: ["掌握线条与灰度", "练习二分法", "提升勾线熟练度"],
-      references: [[], []], // 简化
-      duration: 10,
-      status: 0, // 进行中
-      order: 1,
-    },
-    {
-      id: "2",
-      title: "纯色彩练习",
-      objectives: ["学习色彩搭配", "理解光影与色彩关系", "主观色彩处理"],
-      references: [[], []], // 简化
-      duration: 7,
-      status: 1, // 待开始
-      order: 3,
-    },
-    {
-      id: "3",
-      title: "人物构图练习",
-      objectives: ["探索有趣构图", "模仿杂志风格", "融合多种思路"],
-      references: [[], []], // 简化
-      duration: 10,
-      status: 1, // 待开始
-      order: 4,
-    },
-    {
-      id: "4",
-      title: "风景速写",
-      objectives: ["掌握透视原理", "练习构图技巧", "提升观察力"],
-      references: [[], []],
-      duration: 5,
-      status: 2, // 已完成
-      order: 0,
-    },
-    {
-      id: "5",
-      title: "动态人物练习",
-      objectives: ["捕捉动态姿势", "理解人体结构", "提升速写能力"],
-      references: [[], []],
-      duration: 8,
-      status: 1, // 待开始
-      order: 2,
-    },
-    // ... 可以添加更多卡片
-  ];
+const Overview = () => {
+  //   const initialCards: ThemeCard[] = [
+  //     {
+  //       id: "1",
+  //       title: "纯黑白人物插图",
+  //       objectives: ["掌握线条与灰度", "练习二分法", "提升勾线熟练度"],
+  //       references: [[], []], // 简化
+  //       duration: 10,
+  //       status: 0, // 进行中
+  //       order: 1,
+  //     },
+  //     {
+  //       id: "2",
+  //       title: "纯色彩练习",
+  //       objectives: ["学习色彩搭配", "理解光影与色彩关系", "主观色彩处理"],
+  //       references: [[], []], // 简化
+  //       duration: 7,
+  //       status: 1, // 待开始
+  //       order: 3,
+  //     },
+  //     {
+  //       id: "3",
+  //       title: "人物构图练习",
+  //       objectives: ["探索有趣构图", "模仿杂志风格", "融合多种思路"],
+  //       references: [[], []], // 简化
+  //       duration: 10,
+  //       status: 1, // 待开始
+  //       order: 4,
+  //     },
+  //     {
+  //       id: "4",
+  //       title: "风景速写",
+  //       objectives: ["掌握透视原理", "练习构图技巧", "提升观察力"],
+  //       references: [[], []],
+  //       duration: 5,
+  //       status: 2, // 已完成
+  //       order: 0,
+  //     },
+  //     {
+  //       id: "5",
+  //       title: "动态人物练习",
+  //       objectives: ["捕捉动态姿势", "理解人体结构", "提升速写能力"],
+  //       references: [[], []],
+  //       duration: 8,
+  //       status: 1, // 待开始
+  //       order: 2,
+  //     },
+  //     // ... 可以添加更多卡片
+  //   ];
 
-  const [cards, setCards] = useState<ThemeCard[]>(initialCards);
+  const [cards, setCards] = useState<ThemeCard[]>([]);
+  const [inProgressCards, setInProgressCards] = useState<ThemeCard[]>([]);
+  const [pendingCards, setPendingCards] = useState<ThemeCard[]>([]);
+  const [completedCards, setCompletedCards] = useState<ThemeCard[]>([]);
   const [isEditing, setIsEditing] = useState(false);
 
-  // 分类卡片并按顺序排序
-  const inProgressCards = cards
-    .filter((card) => card.status === 0)
-    .sort((a, b) => a.order - b.order);
-  const pendingCards = cards
-    .filter((card) => card.status === 1)
-    .sort((a, b) => a.order - b.order);
-  const completedCards = cards
-    .filter((card) => card.status === 2)
-    .sort((a, b) => a.order - b.order);
+  useMount(async () => {
+    const { data, error } = (await supabase
+      .from("theme")
+      .select("*")
+      .order("order", { ascending: true })) as { data: ThemeCard[] };
+    try {
+      // 分类卡片并按顺序排序
+      const inProgress = data
+        .filter((card) => card.status === 0)
+        .sort((a, b) => a.order - b.order);
+      const pending = data
+        .filter((card) => card.status === 1)
+        .sort((a, b) => a.order - b.order);
+      const completed = data
+        .filter((card) => card.status === 2)
+        .sort((a, b) => a.order - b.order);
+      setInProgressCards(inProgress);
+      setPendingCards(pending);
+      setCompletedCards(completed);
+      setCards(data);
+      console.log(data, inProgress, pending, completed);
+    } catch (error) {
+      console.log(error);
+    }
+  });
 
   const moveCard = (fromIndex: number, toIndex: number) => {
-    // 只允许移动待开始列表中的卡片
-    const pendingCardIds = pendingCards.map((card) => card.id);
-    const actualFromIndex = cards.findIndex(
-      (card) => card.id === pendingCardIds[fromIndex]
-    );
-    const actualToIndex = cards.findIndex(
-      (card) => card.id === pendingCardIds[toIndex]
-    );
+    // 创建新的卡片数组
+    const newCards = [...cards];
 
-    const updatedCards = [...cards];
-    const [movedCard] = updatedCards.splice(actualFromIndex, 1);
-    updatedCards.splice(actualToIndex, 0, movedCard);
-    setCards(updatedCards);
+    // 找到待开始状态的卡片
+    const pendingCardsFiltered = newCards.filter((card) => card.status === 1);
+
+    // 获取实际要移动的卡片
+    const fromCard = pendingCardsFiltered[fromIndex];
+    const toCard = pendingCardsFiltered[toIndex];
+
+    // 交换它们的order值
+    if (fromCard && toCard) {
+      const fromOrder = fromCard.order;
+      fromCard.order = toCard.order;
+      toCard.order = fromOrder;
+
+      // 按order重新排序
+      newCards.sort((a, b) => a.order - b.order);
+      setCards(newCards);
+    }
   };
 
   const handleSave = () => {
@@ -244,13 +273,13 @@ const Overview: React.FC = () => {
                   className="p-2 bg-gray-300 text-gray-800 rounded-full hover:bg-gray-400 cursor-pointer flex items-center justify-center"
                   onClick={() => setIsEditing(false)}
                 >
-                  <HiX className="h-5 w-5" />
+                  <HiX className="h-6 w-6" />
                 </button>
                 <button
                   className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 cursor-pointer flex items-center justify-center"
                   onClick={handleSave}
                 >
-                  <HiCheck className="h-5 w-5" />
+                  <HiCheck className="h-6 w-6" />
                 </button>
               </div>
             ) : (
@@ -263,27 +292,33 @@ const Overview: React.FC = () => {
             )}
           </div>
 
-          <CardListWithTitle
-            title="进行中"
-            cards={inProgressCards}
-            isEditing={isEditing}
-            onCardClick={handleCardClick}
-          />
+          {inProgressCards.length > 0 && (
+            <CardListWithTitle
+              title="进行中"
+              cards={inProgressCards}
+              isEditing={isEditing}
+              onCardClick={handleCardClick}
+            />
+          )}
 
-          <CardListWithTitle
-            title="待开始"
-            cards={pendingCards}
-            moveCard={isEditing ? moveCard : undefined}
-            isEditing={isEditing}
-            onCardClick={handleCardClick}
-          />
+          {pendingCards.length > 0 && (
+            <CardListWithTitle
+              title="待开始"
+              cards={pendingCards}
+              moveCard={isEditing ? moveCard : undefined}
+              isEditing={isEditing}
+              onCardClick={handleCardClick}
+            />
+          )}
 
-          <CardListWithTitle
-            title="已完成"
-            cards={completedCards}
-            isEditing={isEditing}
-            onCardClick={handleCardClick}
-          />
+          {completedCards.length > 0 && (
+            <CardListWithTitle
+              title="已完成"
+              cards={completedCards}
+              isEditing={isEditing}
+              onCardClick={handleCardClick}
+            />
+          )}
         </div>
       </div>
     </DndProvider>
