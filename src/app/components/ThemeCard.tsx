@@ -4,23 +4,8 @@ import React, { useEffect, useState } from "react";
 import { DndProvider, useDrag, useDrop } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { HiPencil, HiX, HiCheck } from "react-icons/hi";
-
-// 类型定义
-export interface Reference {
-  id: string;
-  link: string;
-  isSelected: boolean;
-}
-
-export interface ThemeCard {
-  id: string;
-  title: string;
-  objectives: string[];
-  references: Reference[][];
-  duration: number;
-  status: 0 | 1 | 2; // 0: 进行中, 1: 待开始, 2: 已完成
-  order: number; // 添加顺序属性
-}
+import { ThemeCard } from "../data/theme";
+import { useRouter } from "next/navigation";
 
 // 拖拽类型
 const ItemTypes = {
@@ -143,64 +128,16 @@ const CardListWithTitle: React.FC<CardListWithTitleProps> = ({
 
 // 总览组件
 const Overview = () => {
-  //   const initialCards: ThemeCard[] = [
-  //     {
-  //       id: "1",
-  //       title: "纯黑白人物插图",
-  //       objectives: ["掌握线条与灰度", "练习二分法", "提升勾线熟练度"],
-  //       references: [[], []], // 简化
-  //       duration: 10,
-  //       status: 0, // 进行中
-  //       order: 1,
-  //     },
-  //     {
-  //       id: "2",
-  //       title: "纯色彩练习",
-  //       objectives: ["学习色彩搭配", "理解光影与色彩关系", "主观色彩处理"],
-  //       references: [[], []], // 简化
-  //       duration: 7,
-  //       status: 1, // 待开始
-  //       order: 3,
-  //     },
-  //     {
-  //       id: "3",
-  //       title: "人物构图练习",
-  //       objectives: ["探索有趣构图", "模仿杂志风格", "融合多种思路"],
-  //       references: [[], []], // 简化
-  //       duration: 10,
-  //       status: 1, // 待开始
-  //       order: 4,
-  //     },
-  //     {
-  //       id: "4",
-  //       title: "风景速写",
-  //       objectives: ["掌握透视原理", "练习构图技巧", "提升观察力"],
-  //       references: [[], []],
-  //       duration: 5,
-  //       status: 2, // 已完成
-  //       order: 0,
-  //     },
-  //     {
-  //       id: "5",
-  //       title: "动态人物练习",
-  //       objectives: ["捕捉动态姿势", "理解人体结构", "提升速写能力"],
-  //       references: [[], []],
-  //       duration: 8,
-  //       status: 1, // 待开始
-  //       order: 2,
-  //     },
-  //     // ... 可以添加更多卡片
-  //   ];
-
   const [cards, setCards] = useState<ThemeCard[]>([]);
   const [inProgressCards, setInProgressCards] = useState<ThemeCard[]>([]);
   const [pendingCards, setPendingCards] = useState<ThemeCard[]>([]);
   const [completedCards, setCompletedCards] = useState<ThemeCard[]>([]);
   const [isEditing, setIsEditing] = useState(false);
+  const router = useRouter();
 
   useMount(async () => {
-    const { data, error } = (await supabase
-      .from("theme")
+    const { data } = (await supabase
+      .from("themes")
       .select("*")
       .order("order", { ascending: true })) as { data: ThemeCard[] };
     try {
@@ -218,7 +155,6 @@ const Overview = () => {
       setPendingCards(pending);
       setCompletedCards(completed);
       setCards(data);
-      console.log(data, inProgress, pending, completed);
     } catch (error) {
       console.log(error);
     }
@@ -255,9 +191,7 @@ const Overview = () => {
 
   const handleCardClick = (card: ThemeCard) => {
     if (!isEditing) {
-      // 浏览模式下点击卡片跳转到详情页
-      console.log("跳转到主题详情:", card.id);
-      // 实际项目中可以使用 router.push(`/theme/${card.id}`)
+      router.push(`/theme/${card.id}`);
     }
   };
 
@@ -270,13 +204,13 @@ const Overview = () => {
             {isEditing ? (
               <div className="flex space-x-2">
                 <button
-                  className="p-2 bg-gray-300 text-gray-800 rounded-full hover:bg-gray-400 cursor-pointer flex items-center justify-center"
+                  className="p-2 bg-gray-300 text-gray-800 rounded-full hover:bg-gray-400 cursor-pointer flex items-center justify-center transition duration-300"
                   onClick={() => setIsEditing(false)}
                 >
                   <HiX className="h-6 w-6" />
                 </button>
                 <button
-                  className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 cursor-pointer flex items-center justify-center"
+                  className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 cursor-pointer flex items-center justify-center transition duration-300"
                   onClick={handleSave}
                 >
                   <HiCheck className="h-6 w-6" />
@@ -284,7 +218,7 @@ const Overview = () => {
               </div>
             ) : (
               <button
-                className="p-2 rounded-full hover:bg-gray-200 cursor-pointer flex items-center justify-center"
+                className="p-2 rounded-full hover:bg-gray-200 cursor-pointer flex items-center justify-center transition duration-300"
                 onClick={() => setIsEditing(true)}
               >
                 <HiPencil className="h-6 w-6 text-gray-600" />
