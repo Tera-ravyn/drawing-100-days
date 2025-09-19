@@ -295,11 +295,11 @@ const ThemeDetailPage: React.FC<ThemeDetailPageProps> = ({ theme }) => {
 
                     {isEditing ? (
                       <div className="space-y-3">
-                        {dayReferences.map((reference, refIndex) => (
-                          <div key={reference.id} className="flex items-center">
+                        {dayReferences.link.map((reference, refIndex) => (
+                          <div key={reference} className="flex items-center">
                             <input
                               type="text"
-                              value={reference.link}
+                              value={reference}
                               onChange={(e) =>
                                 handleReferenceChange(
                                   dayIndex,
