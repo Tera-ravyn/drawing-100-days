@@ -195,11 +195,11 @@ export default function Calendar({
                 "bg-gray-200 text-gray-400 hover:cursor-not-allowed";
             } else if (isSame) {
               bgColorClass =
-                "bg-blue-500 hover:bg-blue-400 text-white hover:cursor-pointer";
+                "bg-blue-400 hover:bg-blue-500 text-white hover:cursor-pointer";
             } else if (enabled) {
               bgColorClass = hasArtwork
-                ? "bg-green-400 hover:bg-green-200 hover:cursor-pointer"
-                : "bg-orange-400 hover:bg-orange-200 hover:cursor-pointer";
+                ? "bg-emerald-200 hover:bg-emerald-300 text-emerald-600 hover:cursor-pointer"
+                : "bg-amber-200 hover:bg-amber-300 text-amber-600 hover:cursor-pointer";
             } else {
               bgColorClass =
                 "bg-gray-100 text-gray-500 hover:cursor-not-allowed";
@@ -207,7 +207,7 @@ export default function Calendar({
 
             return (
               <Link
-                href={`/${dateStr}`}
+                href={`/details/${dateStr}`}
                 key={index}
                 className={`min-h-[100px] p-2 rounded-lg flex flex-col items-center justify-center transition-all duration-300 ${bgColorClass}
     ${isLastDay ? "ring-2 ring-yellow-500" : ""}
@@ -218,18 +218,14 @@ export default function Calendar({
                 </time>
                 {title && (
                   <div className="flex flex-col items-center mt-1">
-                    <span
-                      className={`text-xs ${
-                        isSame ? "text-white" : "text-gray-500"
-                      }`}
-                    >
+                    <span className={`text-xs ${isSame ? "text-white" : ""}`}>
                       {title}
                     </span>
                     {inPlanRange ? (
                       enabled ? (
                         <div
                           className={`text-xs mt-1 transition-colors duration-200 ${
-                            isSame ? "text-white" : "text-gray-500"
+                            isSame ? "text-white" : ""
                           }`}
                         >
                           查看
